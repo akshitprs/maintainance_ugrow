@@ -1,11 +1,11 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, Platform, Linking } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/src/theme';
-import { api, API_URL, getToken } from '@/src/api';
-import { Field, Pill, EmptyState, Button } from '@/src/ui';
+import { api, getToken } from '@/src/api';
+import { Field, Pill, EmptyState } from '@/src/ui';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
@@ -16,6 +16,9 @@ export default function Reports() {
   const [dateTo, setDateTo] = useState('');
   const [status, setStatus] = useState<string>('All');
   const [employeeId, setEmployeeId] = useState('');
+  const [setupId, setSetupId] = useState('');
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [setups, setSetups] = useState<any[]>([]);
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState<'csv' | 'pdf' | null>(null);
@@ -28,13 +31,18 @@ export default function Reports() {
         date_to: dateTo || undefined,
         status: status === 'All' ? undefined : status,
         employee_id: employeeId || undefined,
+        setup_id: setupId || undefined,
       });
       setItems(rows);
     } catch {}
     setLoading(false);
-  }, [dateFrom, dateTo, status, employeeId]);
+  }, [dateFrom, dateTo, status, employeeId, setupId]);
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useFocusEffect(useCallback(() => {
+    load();
+    api.listUsers('employee').then(setEmployees).catch(() => {});
+    api.listSetups().then(setSetups).catch(() => {});
+  }, [load]));
 
   const grouped = useMemo(() => {
     const g: Record<string, any[]> = {};
@@ -52,12 +60,12 @@ export default function Reports() {
     if (dateTo) params.date_to = dateTo;
     if (status !== 'All') params.status = status;
     if (employeeId) params.employee_id = employeeId;
+    if (setupId) params.setup_id = setupId;
 
     const url = api.reportsUrl(params);
     const token = await getToken();
 
     if (Platform.OS === 'web') {
-      // Fetch as blob, trigger download
       try {
         const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
         const blob = await res.blob();
@@ -99,13 +107,42 @@ export default function Reports() {
               {STATUSES.map(st => {
                 const active = status === st;
                 return (
-                  <Pressable
-                    key={st}
-                    onPress={() => setStatus(st)}
-                    style={[s.chip, active && s.chipActive]}
-                    testID={`chip-${st}`}
-                  >
+                  <Pressable key={st} onPress={() => setStatus(st)} style={[s.chip, active && s.chipActive]} testID={`chip-status-${st}`}>
                     <Text style={[s.chipTxt, active && s.chipTxtActive]}>{st === 'in_progress' ? 'In progress' : st === 'completed' ? 'Completed' : 'All'}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+
+          <View>
+            <Text style={s.label}>Employee</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
+              <Pressable onPress={() => setEmployeeId('')} style={[s.chip, !employeeId && s.chipActive]} testID="chip-employee-all">
+                <Text style={[s.chipTxt, !employeeId && s.chipTxtActive]}>All employees</Text>
+              </Pressable>
+              {employees.map((e: any) => {
+                const active = employeeId === e.id;
+                return (
+                  <Pressable key={e.id} onPress={() => setEmployeeId(e.id)} style={[s.chip, active && s.chipActive]} testID={`chip-employee-${e.id}`}>
+                    <Text style={[s.chipTxt, active && s.chipTxtActive]}>{e.name}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+
+          <View>
+            <Text style={s.label}>Setup</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
+              <Pressable onPress={() => setSetupId('')} style={[s.chip, !setupId && s.chipActive]} testID="chip-setup-all">
+                <Text style={[s.chipTxt, !setupId && s.chipTxtActive]}>All setups</Text>
+              </Pressable>
+              {setups.map((sp: any) => {
+                const active = setupId === sp.id;
+                return (
+                  <Pressable key={sp.id} onPress={() => setSetupId(sp.id)} style={[s.chip, active && s.chipActive]} testID={`chip-setup-${sp.id}`}>
+                    <Text style={[s.chipTxt, active && s.chipTxtActive]}>{sp.customer_name}</Text>
                   </Pressable>
                 );
               })}

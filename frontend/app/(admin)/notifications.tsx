@@ -36,9 +36,9 @@ export default function Notifications() {
             <EmptyState icon="notifications-outline" title="No notifications" hint="Check-ins will appear here in real time." />
           ) : (
             items.map(n => (
-              <Pressable key={n.id} style={[s.row, !n.read && s.unread]} onPress={() => { api.readNotif(n.id).catch(() => {}); if (n.visit_id) router.push(`/(admin)/visit/${n.visit_id}`); }} testID={`notif-${n.id}`}>
-                <View style={s.dot}>
-                  <Ionicons name="log-in-outline" size={16} color={theme.colors.brand} />
+              <Pressable key={n.id} style={[s.row, !n.read && s.unread]} onPress={() => { api.readNotif(n.id).catch(() => {}); if (n.type === 'renewal_due' && n.setup_id) router.push(`/(admin)/setup-form/${n.setup_id}`); else if (n.visit_id) router.push(`/(admin)/visit/${n.visit_id}`); }} testID={`notif-${n.id}`}>
+                <View style={[s.dot, n.type === 'renewal_due' && { backgroundColor: '#FEF3C7' }]}>
+                  <Ionicons name={n.type === 'renewal_due' ? 'refresh-outline' : 'log-in-outline'} size={16} color={n.type === 'renewal_due' ? '#92400E' : theme.colors.brand} />
                 </View>
                 <View style={{ flex: 1, gap: 2 }}>
                   <Text style={{ fontWeight: '600', color: theme.colors.text }}>{n.title}</Text>

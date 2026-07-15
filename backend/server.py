@@ -498,6 +498,7 @@ async def rate_visit(visit_id: str, payload: RatingIn, user=Depends(require_admi
 # ---- Dashboard ----
 @api.get("/dashboard/stats")
 async def dashboard(user=Depends(require_admin)):
+    await _run_renewal_check()
     today_start = now_utc().replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
     total_visits_today = await db.visits.count_documents({"check_in_time": {"$gte": today_start}})
     completed_today = await db.visits.count_documents({"check_in_time": {"$gte": today_start}, "status": "completed"})
@@ -520,6 +521,7 @@ async def dashboard(user=Depends(require_admin)):
 # ---- Notifications ----
 @api.get("/notifications")
 async def list_notifs(user=Depends(require_admin)):
+    await _run_renewal_check()
     rows = await db.notifications.find({"admin_id": user["id"]}, {"_id": 0}).sort("created_at", -1).limit(100).to_list(100)
     unread = await db.notifications.count_documents({"admin_id": user["id"], "read": False})
     return {"items": rows, "unread": unread}
@@ -704,6 +706,67 @@ async def export_single_visit(visit_id: str, format: str = "pdf", user=Depends(r
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{fname}"'},
     )
+
+
+
+# ---- Renewal reminders (Monthly = 30d, Premium = 15d cadence) ----
+PLAN_CADENCE_DAYS = {"Monthly": 30, "Premium": 15}
+
+
+def _parse_iso(s: Optional[str]) -> Optional[datetime]:
+    if not s:
+        return None
+    try:
+        return datetime.fromisoformat(s.replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+
+async def _run_renewal_check():
+    """Idempotently insert 'renewal_due' notifications when a setup's next
+    maintenance is within 3 days. Uses `renewal_notified_for` field on the
+    setup to avoid duplicates for the same due date."""
+    today = now_utc()
+    threshold = today + timedelta(days=3)
+    setups = await db.setups.find(
+        {"maintenance_plan": {"$in": list(PLAN_CADENCE_DAYS)}, "status": "active"},
+        {"_id": 0},
+    ).to_list(1000)
+    if not setups:
+        return
+    admins = await db.users.find({"role": "admin"}, {"_id": 0, "id": 1}).to_list(50)
+    for s in setups:
+        cadence = PLAN_CADENCE_DAYS.get(s.get("maintenance_plan") or "")
+        if not cadence:
+            continue
+        last_visit = await db.visits.find_one(
+            {"setup_id": s["id"], "status": "completed"},
+            sort=[("check_in_time", -1)],
+        )
+        anchor = _parse_iso((last_visit or {}).get("check_in_time")) or _parse_iso(s.get("installation_date"))
+        if not anchor:
+            continue
+        next_due = anchor + timedelta(days=cadence)
+        if next_due > threshold or next_due < today - timedelta(days=7):
+            continue
+        due_key = next_due.date().isoformat()
+        if s.get("renewal_notified_for") == due_key:
+            continue
+        # Create notifications for all admins
+        docs = [{
+            "id": str(uuid.uuid4()),
+            "admin_id": a["id"],
+            "type": "renewal_due",
+            "title": "Renewal due soon",
+            "body": f"{s.get('customer_name')} ({s.get('maintenance_plan')}) is due on {due_key}",
+            "visit_id": None,
+            "setup_id": s["id"],
+            "read": False,
+            "created_at": iso(now_utc()),
+        } for a in admins]
+        if docs:
+            await db.notifications.insert_many(docs)
+        await db.setups.update_one({"id": s["id"]}, {"$set": {"renewal_notified_for": due_key}})
 
 
 app.include_router(api)
