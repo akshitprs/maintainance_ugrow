@@ -8,8 +8,8 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function Login() {
   const { login } = useAuth();
-  const [email, setEmail] = useState('admin@ugrow.com');
-  const [password, setPassword] = useState('Admin@123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,10 +43,6 @@ export default function Login() {
             {error ? <Text style={{ color: theme.colors.error, fontSize: theme.font.sm }} testID="login-error">{error}</Text> : null}
             <View style={{ height: 8 }} />
             <Button title="Sign in" onPress={submit} loading={loading} testID="login-submit-button" />
-          </View>
-
-          <View style={s.hint}>
-            <Text style={{ color: theme.colors.text3, fontSize: theme.font.sm }}>Admin demo: admin@ugrow.com / Admin@123</Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
