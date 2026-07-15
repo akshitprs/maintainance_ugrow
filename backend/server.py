@@ -574,8 +574,9 @@ def _csv_safe(v: Any) -> str:
 
 
 def _safe_filename(name: str) -> str:
-    name = re.sub(r"[^A-Za-z0-9._-]+", "_", name).strip("._-")
-    return name or "report"
+    name = re.sub(r"[^A-Za-z0-9._-]+", "_", name)
+    name = re.sub(r"\.{2,}", ".", name)  # collapse .. to . (path traversal)
+    return name.strip("._-") or "report"
 
 
 def _rows_for_export(visits: List[dict], setup_map: dict, emp_map: dict) -> List[List[Any]]:
