@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/src/theme';
-import { api } from '@/src/api';
+import { api, fmtDate } from '@/src/api';
 import { useAuth } from '@/src/auth';
 import { Pill, EmptyState } from '@/src/ui';
 
@@ -30,10 +30,10 @@ export default function EmpHome() {
       setSetups(s);
       const open: Record<string, any> = {};
       const done: Record<string, boolean> = {};
-      const todayStr = new Date().toISOString().slice(0, 10);
+      const todayStr = fmtDate(new Date().toISOString());
       for (const v of mine) {
         if (v.status === 'in_progress') open[v.setup_id] = v;
-        if (v.status === 'completed' && (v.check_in_time || '').slice(0, 10) === todayStr) done[v.setup_id] = true;
+        if (v.status === 'completed' && fmtDate(v.check_in_time) === todayStr) done[v.setup_id] = true;
       }
       setOpenVisits(open);
       setCompletedToday(done);

@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/src/theme';
-import { api, getToken } from '@/src/api';
+import { api, getToken, fmtDate } from '@/src/api';
 import { Field, Pill, EmptyState } from '@/src/ui';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -47,7 +47,7 @@ export default function Reports() {
   const grouped = useMemo(() => {
     const g: Record<string, any[]> = {};
     for (const v of items) {
-      const d = (v.check_in_time || '').slice(0, 10) || 'Unknown';
+      const d = fmtDate(v.check_in_time) || 'Unknown';
       (g[d] = g[d] || []).push(v);
     }
     return Object.entries(g).sort((a, b) => (a[0] < b[0] ? 1 : -1));

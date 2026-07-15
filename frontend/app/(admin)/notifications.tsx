@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/src/theme';
-import { api } from '@/src/api';
+import { api, fmtDateTime } from '@/src/api';
 import { Header, EmptyState, Button } from '@/src/ui';
 
 export default function Notifications() {
@@ -43,7 +43,7 @@ export default function Notifications() {
                 <View style={{ flex: 1, gap: 2 }}>
                   <Text style={{ fontWeight: '600', color: theme.colors.text }}>{n.title}</Text>
                   <Text style={{ color: theme.colors.text3, fontSize: theme.font.sm }}>{n.body}</Text>
-                  <Text style={{ color: theme.colors.textMuted, fontSize: 11, marginTop: 4 }}>{(n.created_at || '').replace('T', ' ').slice(0, 16)}</Text>
+                  <Text style={{ color: theme.colors.textMuted, fontSize: 11, marginTop: 4 }}>{fmtDateTime(n.created_at)}</Text>
                 </View>
                 {!n.read ? <View style={s.unreadDot} /> : null}
               </Pressable>

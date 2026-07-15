@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/src/theme';
-import { api, getToken } from '@/src/api';
+import { api, getToken, fmtDateTimeSec } from '@/src/api';
 import { Header, Pill, Field, Button } from '@/src/ui';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -73,8 +73,8 @@ export default function VisitDetail() {
           </View>
           <Text style={s.meta}>{visit.setup_type}</Text>
           <View style={s.row}><Text style={s.k}>Employee</Text><Text style={s.v}>{visit.employee_name}</Text></View>
-          <View style={s.row}><Text style={s.k}>Check-in</Text><Text style={s.v}>{(visit.check_in_time || '').replace('T', ' ').slice(0, 19)}</Text></View>
-          <View style={s.row}><Text style={s.k}>Check-out</Text><Text style={s.v}>{visit.check_out_time ? (visit.check_out_time.replace('T', ' ').slice(0, 19)) : '—'}</Text></View>
+          <View style={s.row}><Text style={s.k}>Check-in</Text><Text style={s.v} testID="ci-time">{fmtDateTimeSec(visit.check_in_time)}</Text></View>
+          <View style={s.row}><Text style={s.k}>Check-out</Text><Text style={s.v} testID="co-time">{fmtDateTimeSec(visit.check_out_time) || '—'}</Text></View>
           <View style={s.row}><Text style={s.k}>Duration</Text><Text style={s.v}>{visit.duration_minutes ? `${visit.duration_minutes} min` : '—'}</Text></View>
         </View>
 

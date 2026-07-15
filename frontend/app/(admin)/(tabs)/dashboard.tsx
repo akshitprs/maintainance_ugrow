@@ -4,20 +4,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/src/theme';
-import { api } from '@/src/api';
+import { api, fmtDateTimeSec } from '@/src/api';
 import { useAuth } from '@/src/auth';
 import { Pill } from '@/src/ui';
 
 function headerDate() {
   const d = new Date();
-  return d.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' });
-}
-function activityDate(iso?: string) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  const date = `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
-  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }).toLowerCase();
-  return `${date}, ${time}`;
+  return d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
 export default function Dashboard() {
@@ -101,7 +94,7 @@ export default function Dashboard() {
                 <Pressable key={v.id} style={s.activity} onPress={() => router.push(`/(admin)/visit/${v.id}`)} testID={`activity-${v.id}`}>
                   <View style={{ flex: 1, gap: 4 }}>
                     <Text style={s.actName}>{v.employee_name} → {v.customer_name}</Text>
-                    <Text style={s.actDate}>{activityDate(v.check_in_time)}</Text>
+                    <Text style={s.actDate}>{fmtDateTimeSec(v.check_in_time)}</Text>
                   </View>
                   <Pill text={v.status === 'in_progress' ? 'In progress' : 'Completed'} tone={v.status === 'in_progress' ? 'warning' : 'success'} />
                 </Pressable>

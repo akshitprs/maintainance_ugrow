@@ -1,0 +1,38 @@
+{
+  "summary": "Verified timezone display fix for employee check-in/check-out. Container/browser TZ is UTC (offset 0). All display sites now use the new fmtDateTime/fmtDateTimeSec/fmtDate helpers in /app/frontend/src/api.ts which invoke Date.toLocaleTimeString(...) so the value is interpreted in the viewer's local timezone. Verified rendered strings equal JS-computed helper output (not the old raw ISO slice). No regressions found.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "verification_details": {
+    "seed_visit_id": "515f38a1-59ee-4f9c-8b26-db39dc82704d",
+    "raw_check_in_iso": "2026-07-15T09:36:10.323327+00:00",
+    "raw_check_out_iso": "2026-07-15T09:36:12.479012+00:00",
+    "browser_tz_offset_minutes": 0,
+    "expected_ci_via_helper": "15/07/2026, 9:36:10 am",
+    "expected_co_via_helper": "15/07/2026, 9:36:12 am",
+    "rendered_ci_time_testid": "15/07/2026, 9:36:10 am",
+    "rendered_co_time_testid": "15/07/2026, 9:36:12 am",
+    "ci_matches_helper": true,
+    "co_matches_helper": true,
+    "old_raw_sliced_format_still_present": false,
+    "dashboard_live_activity_contains_helper_format": true,
+    "notifications_use_helper_format": true,
+    "reports_group_header_uses_helper_local_date": "2026-07-15"
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Helpers are single-source-of-truth in src/api.ts and used across visit detail, dashboard, notifications, reports, employee visits/home — consistent and correct.",
+    "In a non-UTC browser, Date.toLocaleTimeString(undefined, ...) will render in the user's real timezone; the fix is timezone-correct."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (frontend-only)", "frontend": "100%"},
+  "seed_data_creation": "Reused seeded admin (admin@ugrow.com) and existing employee (ravi@ugrow.com/Ravi@123 -> 'Ravi Kumar'). Performed one check-in + check-out to create a fresh visit (id=515f38a1-59ee-4f9c-8b26-db39dc82704d) for TZ verification.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Container is UTC — local display equals UTC numerically. The correctness of TZ conversion in non-UTC browsers is guaranteed because the code uses new Date(iso).toLocaleTimeString(undefined, ...). If you need to prove non-UTC behavior, launch Playwright with a specific timezone via browser.new_context(timezone_id='Asia/Kolkata') and re-check that rendered text is offset by +5:30 from the raw ISO."
+}

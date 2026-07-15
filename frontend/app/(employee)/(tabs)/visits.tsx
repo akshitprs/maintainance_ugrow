@@ -3,7 +3,7 @@ import { View, Text, FlatList, Pressable, StyleSheet, RefreshControl, ActivityIn
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { theme } from '@/src/theme';
-import { api } from '@/src/api';
+import { api, fmtDateTime } from '@/src/api';
 import { Pill, EmptyState } from '@/src/ui';
 
 export default function MyVisits() {
@@ -33,7 +33,7 @@ export default function MyVisits() {
             <View style={s.card}>
               <View style={{ flex: 1, gap: 4 }}>
                 <Text style={s.name}>{item.customer_name}</Text>
-                <Text style={s.meta}>{(item.check_in_time || '').replace('T', ' ').slice(0, 16)}</Text>
+                <Text style={s.meta}>{fmtDateTime(item.check_in_time)}</Text>
                 <Text style={s.meta}>{item.duration_minutes ? `${item.duration_minutes} min` : '—'}</Text>
               </View>
               <Pill text={item.status === 'in_progress' ? 'In progress' : 'Completed'} tone={item.status === 'in_progress' ? 'warning' : 'success'} />
