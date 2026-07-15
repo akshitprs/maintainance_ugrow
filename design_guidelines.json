@@ -1,0 +1,209 @@
+{
+  "app_name": "UGrow Naturals",
+  "personality": "1 iOS-Native Clean (Fusion: Structural Minimalism / Notion-inspired)",
+  "personality_one_liner": "A premium, functional field-service tool combining stark white backgrounds and precise borders with a vibrant organic green accent.",
+  "color": {
+    "surface": "#FFFFFF",
+    "onSurface": "#111827",
+    "surfaceSecondary": "#F9FAFB",
+    "onSurfaceSecondary": "#374151",
+    "surfaceTertiary": "#F3F4F6",
+    "onSurfaceTertiary": "#4B5563",
+    "surfaceInverse": "#111827",
+    "onSurfaceInverse": "#FFFFFF",
+    "brand": "#064E3B",
+    "brandPrimary": "#10B981",
+    "onBrandPrimary": "#FFFFFF",
+    "brandSecondary": "#D1FAE5",
+    "onBrandSecondary": "#064E3B",
+    "brandTertiary": "#A7F3D0",
+    "onBrandTertiary": "#064E3B",
+    "success": "#10B981",
+    "onSuccess": "#FFFFFF",
+    "warning": "#F59E0B",
+    "onWarning": "#FFFFFF",
+    "error": "#EF4444",
+    "onError": "#FFFFFF",
+    "info": "#6B7280",
+    "onInfo": "#FFFFFF",
+    "border": "#E5E7EB",
+    "borderStrong": "#D1D5DB",
+    "divider": "#F3F4F6"
+  },
+  "typography": {
+    "displayFontFamily": "Geist",
+    "textFontFamily": "Geist",
+    "scale": {
+      "sm": 12,
+      "base": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24
+    }
+  },
+  "spacing": {
+    "rule": "Generous vertical rhythm, 16pt gaps between stacked fields. Ensure minimum 48pt touch targets. Left-aligned layouts.",
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "3xl": 48
+  },
+  "radius_tokens": {
+    "sm": 6,
+    "md": 12,
+    "lg": 20,
+    "pill": 999
+  },
+  "shadow_tier": "1",
+  "navigation": "bottom_tabs",
+  "icon_set": "Phosphor",
+  "glassmorphism": {
+    "enabled": true,
+    "do's": [
+      "Subtle frosted glass on the bottom tab bar",
+      "Sticky CTAs wrapped in glass container at the bottom of forms",
+      "Sticky headers above scrollable lists/forms"
+    ],
+    "dont's": [
+      "Never use inside form inputs",
+      "Never use on standard content cards"
+    ]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-glass-effect",
+      "android": "expo-blur",
+      "low_end_android_fallback": "solid surfaceSecondary"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "screens": [
+    {
+      "name": "Login",
+      "purpose": "Role-based secure entry for Admins and Employees.",
+      "states": {
+        "loading": "Spinner centered on stark white background with 'Authenticating...'",
+        "empty": "Not applicable",
+        "error": "Standard inline error messages below form fields in #EF4444."
+      },
+      "layout": "Minimalist single-column form centered vertically. Left-aligned labels, 1pt precise borders on inputs, generous 16pt spacing between fields. Large sticky primary CTA at bottom wrapped in a KeyboardAvoidingView."
+    },
+    {
+      "name": "Admin Dashboard",
+      "purpose": "High-level overview of field operations with stat cards and a live activity feed.",
+      "states": {
+        "loading": "Skeleton loader for stat cards and feed items.",
+        "empty": "Illustration of a clipboard report with 'No recent activity yet'.",
+        "error": "Error banner at the top with a 'Tap to retry' button."
+      },
+      "layout": "Sticky glass header. Top section features a 2-col grid of quick stat cards (white surface, 1pt border). Below, a 'Live Activity Feed' structured as a vertical list with precise 1pt bottom borders separating rows. Left-aligned text."
+    },
+    {
+      "name": "Admin Employee Management",
+      "purpose": "CRUD interface for managing field technicians.",
+      "states": {
+        "loading": "List skeleton with circular avatar placeholders.",
+        "empty": "Illustration of a user icon with 'No employees found. Add one.'",
+        "error": "Error message with 'Retry' CTA."
+      },
+      "layout": "List view of employees with initials inside circular brandTertiary avatars. Clean row structure with 1pt dividers. Floating Action Button (FAB) or top-right header button to 'Add Employee'."
+    },
+    {
+      "name": "Admin Setup Management",
+      "purpose": "CRUD interface for customer garden setups and assignment.",
+      "states": {
+        "loading": "Skeleton blocks matching card layouts.",
+        "empty": "Illustration of plant seedling with 'No setups created yet.'",
+        "error": "Error message centered."
+      },
+      "layout": "Cards displaying customer setups with 1pt borders. Include an assignment badge indicating the assigned employee. Action to create new setup via a bottom sheet."
+    },
+    {
+      "name": "Admin Visit Detail",
+      "purpose": "Detailed view of a completed maintenance form and associated rating.",
+      "states": {
+        "loading": "Skeleton text blocks and square image placeholders.",
+        "empty": "Not applicable (visited directly from feed).",
+        "error": "Error loading visit details, with retry."
+      },
+      "layout": "Read-only structured list mimicking the Employee form. Thick section dividers (4pt surfaceTertiary). Native square thumbnails for before/after photos. Left-aligned key-value pairs."
+    },
+    {
+      "name": "Admin Reports",
+      "purpose": "Filter and export visit data to CSV/PDF.",
+      "states": {
+        "loading": "Spinner while generating export.",
+        "empty": "Clipboard illustration indicating 'Adjust filters to see reports.'",
+        "error": "Export failed toast/snackbar."
+      },
+      "layout": "Chip/filter row at the top (date range, employee, setup, status) scrolling horizontally. Below, a summary of matching records. Sticky primary CTA at the bottom to 'Export to CSV/PDF'."
+    },
+    {
+      "name": "Admin Notification Bell",
+      "purpose": "Real-time list of check-in/out and system alerts.",
+      "states": {
+        "loading": "Skeleton rows.",
+        "empty": "Bell illustration 'You are all caught up.'",
+        "error": "Failed to load notifications."
+      },
+      "layout": "Full-screen list or large bottom sheet. Clean rows with unread badge indicators (small brandPrimary dot). 1pt dividers between items."
+    },
+    {
+      "name": "Employee Home",
+      "purpose": "Today's assigned terrace/kitchen garden setups for the technician.",
+      "states": {
+        "loading": "Skeleton cards.",
+        "empty": "Plant sprout illustration 'No setups assigned for today. Take a break!'",
+        "error": "Retry fetching today's schedule."
+      },
+      "layout": "Clean card list. Each card shows customer name, location, and a prominent 'Check-In' button. Left-aligned content."
+    },
+    {
+      "name": "Employee Visit Flow",
+      "purpose": "GPS check-in, detailed multi-section maintenance form, and checkout.",
+      "states": {
+        "loading": "Capturing GPS location...",
+        "empty": "Not applicable.",
+        "error": "GPS error or form submission failure alerts."
+      },
+      "layout": "Strict single-column stacking form. 16pt gap between fields. Thick dividers (4pt surfaceTertiary) separating sections (Weather, Plant Health, Watering, etc.). Native camera capture outputs square thumbnails in a horizontal scroll. Haptic feedback on toggles. Primary CTA sticky at the bottom."
+    }
+  ],
+  "images": {
+    "dashboard_hero": {
+      "url": "https://images.pexels.com/photos/6738991/pexels-photo-6738991.jpeg",
+      "alt": "Rooftop terrace garden featuring potted plants and urban view"
+    },
+    "empty_state_setups": {
+      "url": "https://images.pexels.com/photos/1251026/pexels-photo-1251026.jpeg",
+      "alt": "Vibrant green seedlings sprouting from dark rich soil"
+    },
+    "empty_state_reports": {
+      "url": "https://images.unsplash.com/photo-1743385779431-45d26d9775b1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzV8MHwxfHNlYXJjaHwyfHxjbGlwYm9hcmQlMjByZXBvcnR8ZW58MHx8fHwxNzg0MDk4Mjk2fDA&ixlib=rb-4.1.0&q=85",
+      "alt": "Clipboard report empty state illustration"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Adhere strictly to the 'Structural Minimalism' aesthetic: stark white backgrounds (surface: #FFFFFF), precise 1pt borders (border: #E5E7EB), and left-aligned text.",
+    "Do NOT use any shade of blue or purple. The primary accent is a vibrant organic green (#10B981) with dark green text on light surfaces (#064E3B). Info states should use gray (#6B7280).",
+    "Forms must use single-column stacking with labels above inputs and strict 16pt gaps. Use a 4pt thick divider (#F3F4F6) to separate major sections in the long maintenance form.",
+    "Implement haptics on all switches, toggles, and primary CTA presses as requested in the user prompt. Add to the haptics block for the dev agent.",
+    "Ensure touch targets are a minimum of 48x48pt padding out the internal space of Pressables if necessary.",
+    "Sticky primary actions (like 'Submit Report', 'Export') must reside in a fixed container at the bottom over the home indicator, protected by safe areas, with a frosted glass background.",
+    "Use Phosphor icons uniformly across the app for tabs, actions, and empty states. Do not mix icon families."
+  ],
+  "haptics": {
+    "primary_button_press": "impactLight",
+    "toggle_switch": "selection",
+    "form_section_expand": "impactLight",
+    "gps_check_in_success": "notificationSuccess",
+    "error_alert": "notificationError"
+  }
+}
