@@ -25,6 +25,66 @@ const SECTIONS = [
 
 const WEATHER = ['Sunny', 'Cloudy', 'Rainy', 'Hot', 'Windy'];
 
+type ToggleProps = { label: string; k: string; icon: keyof typeof Ionicons.glyphMap; form: any; setForm: (f: any) => void };
+const Toggle = React.memo(({ label, k, icon, form, setForm }: ToggleProps) => (
+  <Pressable style={[s.toggle, form[k] && s.toggleOn]} onPress={() => { setForm({ ...form, [k]: !form[k] }); Haptics.selectionAsync().catch(() => {}); }} testID={`toggle-${k}`}>
+    <View style={[s.toggleIcon, form[k] && s.toggleIconOn]}>
+      <Ionicons name={icon} size={18} color={form[k] ? '#fff' : theme.colors.text3} />
+    </View>
+    <Text style={[s.toggleLabel, form[k] && { color: theme.colors.brand }]}>{label}</Text>
+    <View style={[s.switch, form[k] && s.switchOn]}>
+      <View style={[s.knob, form[k] && s.knobOn]} />
+    </View>
+  </Pressable>
+));
+
+type StepperProps = { k: string; form: any; setForm: (f: any) => void };
+const Stepper = React.memo(({ k, form, setForm }: StepperProps) => {
+  const val = Number(form[k]) || 0;
+  const set = (v: number) => setForm({ ...form, [k]: Math.max(0, v) });
+  return (
+    <View style={s.stepper}>
+      <Pressable style={s.stepBtn} onPress={() => { set(val - 1); Haptics.selectionAsync().catch(() => {}); }} testID={`step-dec-${k}`}>
+        <Ionicons name="remove" size={18} color={theme.colors.text} />
+      </Pressable>
+      <TextInput
+        value={String(val)}
+        onChangeText={(t) => set(parseInt(t.replace(/[^0-9]/g, '') || '0', 10))}
+        keyboardType="numeric"
+        style={s.stepValue}
+        testID={`step-val-${k}`}
+      />
+      <Pressable style={s.stepBtn} onPress={() => { set(val + 1); Haptics.selectionAsync().catch(() => {}); }} testID={`step-inc-${k}`}>
+        <Ionicons name="add" size={18} color={theme.colors.text} />
+      </Pressable>
+    </View>
+  );
+});
+
+type PhotoBucketProps = { label: string; k: 'photos_before' | 'photos_after' | 'photos_problem'; form: any; pickImage: (b: any) => void; removePhoto: (b: any, i: number) => void };
+const PhotoBucket = React.memo(({ label, k, form, pickImage, removePhoto }: PhotoBucketProps) => (
+  <View style={{ gap: 10 }}>
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+      <Text style={s.subLabel}>{label}</Text>
+      <Text style={{ color: theme.colors.text3, fontSize: theme.font.sm }}>{form[k].length} added</Text>
+    </View>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+      {form[k].map((uri: string, i: number) => (
+        <View key={i} style={s.photoWrap}>
+          <Image source={{ uri }} style={s.photo} />
+          <Pressable style={s.photoRm} onPress={() => removePhoto(k, i)} testID={`photo-rm-${k}-${i}`}>
+            <Ionicons name="close" size={12} color="#fff" />
+          </Pressable>
+        </View>
+      ))}
+      <Pressable style={s.photoAdd} onPress={() => pickImage(k)} testID={`photo-${k}`}>
+        <Ionicons name="camera" size={22} color={theme.colors.brand} />
+        <Text style={{ color: theme.colors.text3, fontSize: 11, marginTop: 4 }}>Add</Text>
+      </Pressable>
+    </View>
+  </View>
+));
+
 function useElapsed(startIso?: string) {
   const [t, setT] = useState('');
   useEffect(() => {
@@ -105,8 +165,8 @@ export default function VisitFlow() {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     const useLib = perm.status !== 'granted';
     const res = useLib
-      ? await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.5, base64: true })
-      : await ImagePicker.launchCameraAsync({ quality: 0.5, base64: true });
+      ? await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.5, base64: true })
+      : await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.5, base64: true });
     if (!res.canceled && res.assets?.[0]?.base64) {
       const dataUrl = `data:image/jpeg;base64,${res.assets[0].base64}`;
       setForm((f: any) => ({ ...f, [bucket]: [...f[bucket], dataUrl] }));
@@ -155,63 +215,6 @@ export default function VisitFlow() {
 
   if (loading) return <SafeAreaView style={{ flex: 1 }}><ActivityIndicator style={{ marginTop: 40 }} color={theme.colors.brandPrimary} /></SafeAreaView>;
   if (!setup) return <SafeAreaView style={{ flex: 1 }}><Header title="Visit" onBack={() => router.back()} /></SafeAreaView>;
-
-  const Toggle = ({ label, k, icon }: { label: string; k: string; icon: keyof typeof Ionicons.glyphMap }) => (
-    <Pressable style={[s.toggle, form[k] && s.toggleOn]} onPress={() => { setForm({ ...form, [k]: !form[k] }); Haptics.selectionAsync().catch(() => {}); }} testID={`toggle-${k}`}>
-      <View style={[s.toggleIcon, form[k] && s.toggleIconOn]}>
-        <Ionicons name={icon} size={18} color={form[k] ? '#fff' : theme.colors.text3} />
-      </View>
-      <Text style={[s.toggleLabel, form[k] && { color: theme.colors.brand }]}>{label}</Text>
-      <View style={[s.switch, form[k] && s.switchOn]}>
-        <View style={[s.knob, form[k] && s.knobOn]} />
-      </View>
-    </Pressable>
-  );
-
-  const Stepper = ({ k }: { k: string }) => {
-    const val = Number(form[k]) || 0;
-    const set = (v: number) => setForm({ ...form, [k]: Math.max(0, v) });
-    return (
-      <View style={s.stepper}>
-        <Pressable style={s.stepBtn} onPress={() => { set(val - 1); Haptics.selectionAsync().catch(() => {}); }} testID={`step-dec-${k}`}>
-          <Ionicons name="remove" size={18} color={theme.colors.text} />
-        </Pressable>
-        <TextInput
-          value={String(val)}
-          onChangeText={(t) => set(parseInt(t.replace(/[^0-9]/g, '') || '0', 10))}
-          keyboardType="numeric"
-          style={s.stepValue}
-          testID={`step-val-${k}`}
-        />
-        <Pressable style={s.stepBtn} onPress={() => { set(val + 1); Haptics.selectionAsync().catch(() => {}); }} testID={`step-inc-${k}`}>
-          <Ionicons name="add" size={18} color={theme.colors.text} />
-        </Pressable>
-      </View>
-    );
-  };
-
-  const PhotoBucket = ({ label, k }: { label: string; k: 'photos_before' | 'photos_after' | 'photos_problem' }) => (
-    <View style={{ gap: 10 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text style={s.subLabel}>{label}</Text>
-        <Text style={{ color: theme.colors.text3, fontSize: theme.font.sm }}>{form[k].length} added</Text>
-      </View>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-        {form[k].map((uri: string, i: number) => (
-          <View key={i} style={s.photoWrap}>
-            <Image source={{ uri }} style={s.photo} />
-            <Pressable style={s.photoRm} onPress={() => removePhoto(k, i)} testID={`photo-rm-${k}-${i}`}>
-              <Ionicons name="close" size={12} color="#fff" />
-            </Pressable>
-          </View>
-        ))}
-        <Pressable style={s.photoAdd} onPress={() => pickImage(k)} testID={`photo-${k}`}>
-          <Ionicons name="camera" size={22} color={theme.colors.brand} />
-          <Text style={{ color: theme.colors.text3, fontSize: 11, marginTop: 4 }}>Add</Text>
-        </Pressable>
-      </View>
-    </View>
-  );
 
   const captureY = (key: string) => (e: any) => { sectionYs.current[key] = e.nativeEvent.layout.y; };
 
@@ -298,9 +301,9 @@ export default function VisitFlow() {
                 })}
               </ScrollView>
 
-              <View style={s.rowSpread}><Text style={s.rowLabel}>Plants checked</Text><Stepper k="plants_checked" /></View>
-              <View style={s.rowSpread}><Text style={s.rowLabel}>Plants dead</Text><Stepper k="plants_dead" /></View>
-              <View style={s.rowSpread}><Text style={s.rowLabel}>Plants replaced</Text><Stepper k="plants_replaced" /></View>
+              <View style={s.rowSpread}><Text style={s.rowLabel}>Plants checked</Text><Stepper k="plants_checked" form={form} setForm={setForm} /></View>
+              <View style={s.rowSpread}><Text style={s.rowLabel}>Plants dead</Text><Stepper k="plants_dead" form={form} setForm={setForm} /></View>
+              <View style={s.rowSpread}><Text style={s.rowLabel}>Plants replaced</Text><Stepper k="plants_replaced" form={form} setForm={setForm} /></View>
               <View style={{ height: 12 }} />
               <Field label="New plantation" value={form.new_plantation} onChangeText={(v: string) => setForm({ ...form, new_plantation: v })} placeholder="e.g. 3 tomato saplings" />
               <View style={{ height: 12 }} />
@@ -309,9 +312,9 @@ export default function VisitFlow() {
               {/* Maintenance */}
               <SectionTitle k="maintenance" title="Maintenance" icon="construct-outline" />
               <View style={{ gap: 8 }}>
-                <Toggle label="Watering done" k="watering" icon="water" />
-                <Toggle label="Weeding done" k="weeding" icon="cut" />
-                <Toggle label="Pruning done" k="pruning" icon="leaf" />
+                <Toggle label="Watering done" k="watering" icon="water" form={form} setForm={setForm} />
+                <Toggle label="Weeding done" k="weeding" icon="cut" form={form} setForm={setForm} />
+                <Toggle label="Pruning done" k="pruning" icon="leaf" form={form} setForm={setForm} />
               </View>
               <View style={{ height: 12 }} />
               <Field label="Fertilizer type" value={form.fertilizer_type} onChangeText={(v: string) => setForm({ ...form, fertilizer_type: v })} placeholder="e.g. Vermicompost" />
@@ -320,7 +323,7 @@ export default function VisitFlow() {
 
               {/* Pesticide */}
               <SectionTitle k="pesticide" title="Pesticide" icon="flask-outline" />
-              <Toggle label="Pesticide used" k="pesticide_used" icon="flask" />
+              <Toggle label="Pesticide used" k="pesticide_used" icon="flask" form={form} setForm={setForm} />
               {form.pesticide_used ? (
                 <>
                   <View style={{ height: 12 }} />
@@ -330,11 +333,11 @@ export default function VisitFlow() {
 
               {/* Cleaning */}
               <SectionTitle k="cleaning" title="Cleaning" icon="sparkles-outline" />
-              <Toggle label="Cleaning done" k="cleaning_done" icon="sparkles" />
+              <Toggle label="Cleaning done" k="cleaning_done" icon="sparkles" form={form} setForm={setForm} />
 
               {/* Drip */}
               <SectionTitle k="drip" title="Drip Irrigation" icon="water-outline" />
-              <Toggle label="Drip lines OK" k="drip_ok" icon="checkmark-circle" />
+              <Toggle label="Drip lines OK" k="drip_ok" icon="checkmark-circle" form={form} setForm={setForm} />
               <View style={{ height: 12 }} />
               <Field label="Notes" value={form.drip_notes} onChangeText={(v: string) => setForm({ ...form, drip_notes: v })} multiline placeholder="Any leaks, clogs, adjustments" />
 
@@ -348,7 +351,7 @@ export default function VisitFlow() {
 
               {/* Customer */}
               <SectionTitle k="customer" title="Customer" icon="person-outline" />
-              <Toggle label="Customer present" k="customer_present" icon="person" />
+              <Toggle label="Customer present" k="customer_present" icon="person" form={form} setForm={setForm} />
               <View style={{ height: 12 }} />
               <Field label="Feedback" value={form.customer_feedback} onChangeText={(v: string) => setForm({ ...form, customer_feedback: v })} multiline />
               <View style={{ height: 12 }} />
@@ -362,11 +365,11 @@ export default function VisitFlow() {
 
               {/* Photos */}
               <SectionTitle k="photos" title="Photos" icon="camera-outline" />
-              <PhotoBucket label="Before" k="photos_before" />
+              <PhotoBucket label="Before" k="photos_before" form={form} pickImage={pickImage} removePhoto={removePhoto} />
               <View style={{ height: 16 }} />
-              <PhotoBucket label="After" k="photos_after" />
+              <PhotoBucket label="After" k="photos_after" form={form} pickImage={pickImage} removePhoto={removePhoto} />
               <View style={{ height: 16 }} />
-              <PhotoBucket label="Problem" k="photos_problem" />
+              <PhotoBucket label="Problem" k="photos_problem" form={form} pickImage={pickImage} removePhoto={removePhoto} />
             </ScrollView>
           </KeyboardAvoidingView>
 
