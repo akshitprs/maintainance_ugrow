@@ -8,8 +8,20 @@ import { api } from '@/src/api';
 import { useAuth } from '@/src/auth';
 import { Pill } from '@/src/ui';
 
+function headerDate() {
+  const d = new Date();
+  return d.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+function activityDate(iso?: string) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const date = `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }).toLowerCase();
+  return `${date}, ${time}`;
+}
+
 export default function Dashboard() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [stats, setStats] = useState<any>(null);
   const [unread, setUnread] = useState(0);
   const [refresh, setRefresh] = useState(false);
@@ -26,30 +38,28 @@ export default function Dashboard() {
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
-
-  // Polling every 20s while mounted
-  useEffect(() => {
-    const t = setInterval(load, 20000);
-    return () => clearInterval(t);
-  }, [load]);
+  useEffect(() => { const t = setInterval(load, 20000); return () => clearInterval(t); }, [load]);
 
   const statCards = stats ? [
-    { key: 'todays_visits', label: "Today's Visits", value: stats.todays_visits, icon: 'calendar-outline' },
-    { key: 'completed', label: 'Completed', value: stats.completed, icon: 'checkmark-done-outline' },
-    { key: 'pending', label: 'Pending', value: stats.pending, icon: 'time-outline' },
-    { key: 'working_now', label: 'Working Now', value: stats.working_now, icon: 'flash-outline' },
-    { key: 'active_setups', label: 'Active Setups', value: stats.active_setups, icon: 'leaf-outline' },
-    { key: 'employees', label: 'Employees', value: stats.employees, icon: 'people-outline' },
+    { key: 'todays_visits', label: "Today's Visits", value: stats.todays_visits, icon: 'calendar-outline', bg: theme.colors.brandSecondary, fg: theme.colors.brand },
+    { key: 'completed', label: 'Completed', value: stats.completed, icon: 'checkmark-circle', bg: theme.colors.brandSecondary, fg: theme.colors.brandPrimary },
+    { key: 'pending', label: 'Pending', value: stats.pending, icon: 'time-outline', bg: '#FEF3C7', fg: theme.colors.warning },
+    { key: 'working_now', label: 'Working Now', value: stats.working_now, icon: 'people', bg: '#DBEAFE', fg: '#2563EB' },
+    { key: 'active_setups', label: 'Active Setups', value: stats.active_setups, icon: 'leaf', bg: theme.colors.brandSecondary, fg: theme.colors.brandPrimary },
+    { key: 'employees', label: 'Employees', value: stats.employees, icon: 'person', bg: theme.colors.surface3, fg: theme.colors.text3 },
   ] : [];
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }} edges={['top']}>
       <View style={s.header} testID="admin-dashboard-header">
-        <View>
-          <Text style={s.hi}>Hi, {user?.name || 'Admin'}</Text>
-          <Text style={s.sub}>Field operations at a glance</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={s.hi}>Welcome, {user?.name || 'Admin'}</Text>
+          <Text style={s.sub}>{headerDate()}</Text>
         </View>
         <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Pressable style={s.iconBtn} onPress={() => router.push('/(admin)/(tabs)/reports')} testID="reports-btn">
+            <Ionicons name="document-text-outline" size={22} color={theme.colors.text} />
+          </Pressable>
           <Pressable style={s.iconBtn} onPress={() => router.push('/(admin)/notifications')} testID="notif-bell">
             <Ionicons name="notifications-outline" size={22} color={theme.colors.text} />
             {unread > 0 ? (
@@ -57,9 +67,6 @@ export default function Dashboard() {
                 <Text style={s.badgeTxt}>{unread > 9 ? '9+' : unread}</Text>
               </View>
             ) : null}
-          </Pressable>
-          <Pressable style={s.iconBtn} onPress={logout} testID="logout-btn">
-            <Ionicons name="log-out-outline" size={22} color={theme.colors.text} />
           </Pressable>
         </View>
       </View>
@@ -76,8 +83,8 @@ export default function Dashboard() {
           <View style={s.grid}>
             {statCards.map(c => (
               <View key={c.key} style={s.stat} testID={`stat-${c.key}`}>
-                <View style={s.statIcon}>
-                  <Ionicons name={c.icon as any} size={18} color={theme.colors.brand} />
+                <View style={[s.statIcon, { backgroundColor: c.bg }]}>
+                  <Ionicons name={c.icon as any} size={18} color={c.fg} />
                 </View>
                 <Text style={s.statValue}>{c.value}</Text>
                 <Text style={s.statLabel}>{c.label}</Text>
@@ -85,7 +92,7 @@ export default function Dashboard() {
             ))}
           </View>
 
-          <View style={{ marginTop: 24 }}>
+          <View style={{ marginTop: 28 }}>
             <Text style={s.section}>Live Activity</Text>
             {(stats?.recent_activity || []).length === 0 ? (
               <Text style={{ color: theme.colors.text3, paddingVertical: 24, textAlign: 'center' }}>No recent visits yet.</Text>
@@ -93,8 +100,8 @@ export default function Dashboard() {
               (stats.recent_activity as any[]).map(v => (
                 <Pressable key={v.id} style={s.activity} onPress={() => router.push(`/(admin)/visit/${v.id}`)} testID={`activity-${v.id}`}>
                   <View style={{ flex: 1, gap: 4 }}>
-                    <Text style={{ fontWeight: '600', color: theme.colors.text }}>{v.employee_name} → {v.customer_name}</Text>
-                    <Text style={{ color: theme.colors.text3, fontSize: theme.font.sm }}>{(v.check_in_time || '').replace('T', ' ').slice(0, 16)}</Text>
+                    <Text style={s.actName}>{v.employee_name} → {v.customer_name}</Text>
+                    <Text style={s.actDate}>{activityDate(v.check_in_time)}</Text>
                   </View>
                   <Pill text={v.status === 'in_progress' ? 'In progress' : 'Completed'} tone={v.status === 'in_progress' ? 'warning' : 'success'} />
                 </Pressable>
@@ -108,17 +115,19 @@ export default function Dashboard() {
 }
 
 const s = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border },
-  hi: { fontSize: theme.font.xxl, fontWeight: '700', color: theme.colors.text },
-  sub: { color: theme.colors.text3, marginTop: 2 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16, gap: 12 },
+  hi: { fontSize: 28, fontWeight: '700', color: theme.colors.text },
+  sub: { color: theme.colors.text3, marginTop: 4, fontSize: theme.font.lg },
   iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: theme.colors.surface3, alignItems: 'center', justifyContent: 'center' },
   badge: { position: 'absolute', top: 4, right: 4, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: theme.colors.error, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   badgeTxt: { color: '#fff', fontSize: 10, fontWeight: '700' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  stat: { flexBasis: '48%', flexGrow: 1, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.md, padding: 16, backgroundColor: '#fff', gap: 8 },
-  statIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: theme.colors.brandSecondary, alignItems: 'center', justifyContent: 'center' },
-  statValue: { fontSize: theme.font.xxl, fontWeight: '700', color: theme.colors.text },
-  statLabel: { color: theme.colors.text3, fontSize: theme.font.sm },
-  section: { fontSize: theme.font.lg, fontWeight: '700', color: theme.colors.text, marginBottom: 12 },
+  stat: { flexBasis: '48%', flexGrow: 1, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.md, padding: 16, backgroundColor: '#fff', gap: 10 },
+  statIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  statValue: { fontSize: 32, fontWeight: '700', color: theme.colors.text, marginTop: 4 },
+  statLabel: { color: theme.colors.text3, fontSize: theme.font.base },
+  section: { fontSize: theme.font.xl, fontWeight: '700', color: theme.colors.text, marginBottom: 12 },
   activity: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.md, padding: 14, marginBottom: 10, backgroundColor: '#fff' },
+  actName: { fontWeight: '700', color: theme.colors.text, fontSize: theme.font.lg },
+  actDate: { color: theme.colors.text3, fontSize: theme.font.sm },
 });
