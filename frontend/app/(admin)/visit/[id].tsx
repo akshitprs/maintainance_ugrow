@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Pressable, Platform } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Pressable, Platform, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -78,6 +78,44 @@ export default function VisitDetail() {
           <View style={s.row}><Text style={s.k}>Duration</Text><Text style={s.v}>{visit.duration_minutes ? `${visit.duration_minutes} min` : '—'}</Text></View>
         </View>
 
+        {(visit.check_in_lat != null || visit.check_out_lat != null) && (
+          <View style={s.card} testID="gps-section">
+            <Text style={s.section}>GPS Location</Text>
+            {visit.check_in_lat != null && (
+              <View>
+                <View style={s.row}>
+                  <Text style={s.k}>Check-in</Text>
+                  <Text style={s.v} testID="gps-checkin-coords">{Number(visit.check_in_lat).toFixed(6)}, {Number(visit.check_in_lng).toFixed(6)}</Text>
+                </View>
+                <Pressable
+                  style={s.mapBtn}
+                  onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${visit.check_in_lat},${visit.check_in_lng}`)}
+                  testID="gps-checkin-map"
+                >
+                  <Ionicons name="location" size={16} color={theme.colors.brandPrimary} />
+                  <Text style={s.mapBtnTxt}>Open Check-in on Google Maps</Text>
+                </Pressable>
+              </View>
+            )}
+            {visit.check_out_lat != null && (
+              <View>
+                <View style={s.row}>
+                  <Text style={s.k}>Check-out</Text>
+                  <Text style={s.v} testID="gps-checkout-coords">{Number(visit.check_out_lat).toFixed(6)}, {Number(visit.check_out_lng).toFixed(6)}</Text>
+                </View>
+                <Pressable
+                  style={s.mapBtn}
+                  onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${visit.check_out_lat},${visit.check_out_lng}`)}
+                  testID="gps-checkout-map"
+                >
+                  <Ionicons name="location" size={16} color={theme.colors.brandPrimary} />
+                  <Text style={s.mapBtnTxt}>Open Check-out on Google Maps</Text>
+                </Pressable>
+              </View>
+            )}
+          </View>
+        )}
+
         {Object.keys(form).length > 0 && (
           <View style={s.card}>
             <Text style={s.section}>Maintenance Form</Text>
@@ -124,4 +162,6 @@ const s = StyleSheet.create({
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.divider },
   k: { color: theme.colors.text3, fontSize: theme.font.sm, flex: 1 },
   v: { color: theme.colors.text, fontSize: theme.font.sm, fontWeight: '600', flex: 2, textAlign: 'right' },
+  mapBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 10, marginTop: 4 },
+  mapBtnTxt: { color: theme.colors.brandPrimary, fontWeight: '600', fontSize: theme.font.base },
 });
