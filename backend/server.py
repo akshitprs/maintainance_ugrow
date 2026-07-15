@@ -33,9 +33,16 @@ load_dotenv(ROOT_DIR / ".env")
 # ---------- Config ----------
 MONGO_URL = os.environ["MONGO_URL"]
 DB_NAME = os.environ.get("DB_NAME", "ugrow_db")
-SECRET_KEY = os.environ.get("JWT_SECRET", "ugrow-dev-secret-change-me-in-prod")
+SECRET_KEY = os.environ.get("JWT_SECRET")
+if not SECRET_KEY or len(SECRET_KEY) < 32:
+    raise RuntimeError("JWT_SECRET env var must be set and at least 32 chars long")
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@ugrow.com")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD")
+if not ADMIN_PASSWORD:
+    raise RuntimeError("ADMIN_PASSWORD env var must be set for admin seed")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
+MAX_LIST_LIMIT = 200
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
@@ -198,19 +205,19 @@ async def lifespan(app: FastAPI):
     db = client[DB_NAME]
 
     # Idempotent admin seed
-    existing = await db.users.find_one({"email": "admin@ugrow.com"})
+    existing = await db.users.find_one({"email": ADMIN_EMAIL})
     if not existing:
         admin_id = str(uuid.uuid4())
         await db.users.insert_one({
             "id": admin_id,
             "name": "Admin",
-            "email": "admin@ugrow.com",
-            "password_hash": pwd_context.hash("Admin@123"),
+            "email": ADMIN_EMAIL,
+            "password_hash": pwd_context.hash(ADMIN_PASSWORD),
             "role": "admin",
             "status": "active",
             "created_at": iso(now_utc()),
         })
-        logger.info("Seeded admin@ugrow.com / Admin@123")
+        logger.info(f"Seeded admin account: {ADMIN_EMAIL}")
 
     # Indices
     await db.users.create_index("email", unique=True)
@@ -268,7 +275,7 @@ async def list_users(role: Optional[str] = None, user=Depends(require_admin)):
     q = {}
     if role:
         q["role"] = role
-    rows = await db.users.find(q, {"_id": 0, "password_hash": 0}).sort("created_at", -1).to_list(500)
+    rows = await db.users.find(q, {"_id": 0, "password_hash": 0}).sort("created_at", -1).to_list(MAX_LIST_LIMIT)
     return [_clean_user(r) for r in rows]
 
 
@@ -417,6 +424,15 @@ async def checkin(payload: VisitCheckIn, user=Depends(get_current_user)):
 
 @api.post("/visits/{visit_id}/checkout")
 async def checkout(visit_id: str, payload: VisitCheckOut, user=Depends(get_current_user)):
+    # Cap checkout form payload to prevent DoS (16MB Mongo limit anyway)
+    try:
+        import json as _json
+        if len(_json.dumps(payload.form)) > 2 * 1024 * 1024:  # 2MB
+            raise HTTPException(413, "Form payload too large")
+    except HTTPException:
+        raise
+    except Exception:
+        pass
     visit = await db.visits.find_one({"id": visit_id}, {"_id": 0})
     if not visit:
         raise HTTPException(404, "Visit not found")
@@ -453,10 +469,12 @@ async def list_visits(
     date_to: Optional[str] = None,
     user=Depends(get_current_user),
 ):
+    limit = max(1, min(limit, MAX_LIST_LIMIT))
     q: dict = {}
     if user["role"] == "employee":
+        # Employees can only see their own visits — ignore any client-supplied employee_id
         q["employee_id"] = user["id"]
-    if employee_id:
+    elif employee_id:
         q["employee_id"] = employee_id
     if setup_id:
         q["setup_id"] = setup_id
@@ -540,6 +558,26 @@ async def read_all(user=Depends(require_admin)):
 
 
 # ---- Reports (CSV / PDF) ----
+import re
+
+# Prefix any CSV cell whose first char could be interpreted as a spreadsheet
+# formula (=, +, -, @, TAB, CR) with a leading apostrophe. Also strip control
+# chars from filenames.
+_CSV_UNSAFE = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _csv_safe(v: Any) -> str:
+    s = "" if v is None else str(v)
+    if s and s[0] in _CSV_UNSAFE:
+        s = "'" + s
+    return s
+
+
+def _safe_filename(name: str) -> str:
+    name = re.sub(r"[^A-Za-z0-9._-]+", "_", name).strip("._-")
+    return name or "report"
+
+
 def _rows_for_export(visits: List[dict], setup_map: dict, emp_map: dict) -> List[List[Any]]:
     header = ["Date", "Customer", "Employee", "Check-In", "Check-Out", "Duration (min)", "Status", "Rating", "Setup Type"]
     out = [header]
@@ -547,15 +585,15 @@ def _rows_for_export(visits: List[dict], setup_map: dict, emp_map: dict) -> List
         ci = v.get("check_in_time") or ""
         co = v.get("check_out_time") or ""
         out.append([
-            ci[:10],
-            v.get("customer_name") or "",
-            v.get("employee_name") or "",
-            ci[11:16] if len(ci) >= 16 else "",
-            co[11:16] if len(co) >= 16 else "",
-            v.get("duration_minutes") or "",
-            v.get("status") or "",
-            (v.get("rating") or {}).get("stars") if v.get("rating") else "",
-            v.get("setup_type") or "",
+            _csv_safe(ci[:10]),
+            _csv_safe(v.get("customer_name") or ""),
+            _csv_safe(v.get("employee_name") or ""),
+            _csv_safe(ci[11:16] if len(ci) >= 16 else ""),
+            _csv_safe(co[11:16] if len(co) >= 16 else ""),
+            _csv_safe(v.get("duration_minutes") or ""),
+            _csv_safe(v.get("status") or ""),
+            _csv_safe((v.get("rating") or {}).get("stars") if v.get("rating") else ""),
+            _csv_safe(v.get("setup_type") or ""),
         ])
     return out
 
@@ -584,13 +622,13 @@ async def reports_visits(
         if date_to:
             rng["$lte"] = date_to + "T23:59:59"
         q["check_in_time"] = rng
-    visits = await db.visits.find(q, {"_id": 0}).sort("check_in_time", -1).to_list(2000)
+    visits = await db.visits.find(q, {"_id": 0}).sort("check_in_time", -1).to_list(500)
     visits = [_clean_visit(v) for v in visits]
 
     if not format:
         return {"items": visits, "count": len(visits)}
 
-    fname_base = f"visits_{date_from or 'all'}_to_{date_to or 'all'}"
+    fname_base = _safe_filename(f"visits_{date_from or 'all'}_to_{date_to or 'all'}")
 
     if format == "csv":
         buf = io.StringIO()
@@ -697,12 +735,14 @@ async def export_single_visit(visit_id: str, format: str = "pdf", user=Depends(r
             els.append(ft)
 
     if v.get("rating") and v["rating"].get("comment"):
+        import xml.sax.saxutils as _sx
+        safe_comment = _sx.escape(str(v["rating"]["comment"]))
         els.append(Spacer(1, 0.4 * cm))
-        els.append(Paragraph(f"<b>Admin Comment:</b> {v['rating']['comment']}", styles["Normal"]))
+        els.append(Paragraph(f"<b>Admin Comment:</b> {safe_comment}", styles["Normal"]))
 
     doc.build(els)
     buf.seek(0)
-    fname = f"visit_{(v.get('customer_name') or 'report').replace(' ', '_')}_{(v.get('check_in_time') or '')[:10]}.pdf"
+    fname = _safe_filename(f"visit_{(v.get('customer_name') or 'report')}_{(v.get('check_in_time') or '')[:10]}") + ".pdf"
     return StreamingResponse(
         iter([buf.getvalue()]),
         media_type="application/pdf",

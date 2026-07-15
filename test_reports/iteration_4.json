@@ -1,0 +1,39 @@
+{
+  "summary": "Backend security-audit verification (SEC-001..SEC-005 + regression) via pytest against http://localhost:8001. 12/13 passed. SEC-001 (JWT hardening), SEC-003 (IDOR forced to caller id), SEC-004 (2MB checkout cap + 200 limit clamp), SEC-005 CSV formula injection prefixing, and all regressions (admin login, employee checkin/checkout small form, admin list users/visits, CSV+PDF export) verified working. One SEC-005 sub-item FAILED: Content-Disposition filename still contains '..' sequences because `_safe_filename` regex `[^A-Za-z0-9._-]+` treats '.' as safe and does not collapse consecutive dots — for input date_from=../../etc/passwd&date_to=x, resulting filename is `visits_.._.._etc_passwd_to_x.csv`. No slashes leak, and the character set is restricted to [A-Za-z0-9._-] as required, but '..' remnants violate the explicit requirement.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "GET /api/reports/visits?format=csv (also PDF export filename)",
+        "issue": "SEC-005 partial: `_safe_filename` (server.py:576-578) allows consecutive dots to survive. Input `date_from=../../etc/passwd&date_to=x` yields filename `visits_.._.._etc_passwd_to_x.csv` — still contains '..' sequences that the audit requirement forbids. Fix: after the char-class substitution, additionally collapse runs of dots, e.g. `name = re.sub(r'\\.{2,}', '.', name)` (and/or drop leading dots via `.lstrip('.')`). Slashes are correctly stripped; only the '..' remnant is the concern."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_security_fixes.py",
+    "/app/test_reports/pytest/security_fixes.xml"
+  ],
+  "action_items": [
+    "Harden `_safe_filename` in /app/backend/server.py (~line 576) to collapse consecutive dots: add `name = re.sub(r'\\.{2,}', '.', name)` before returning, so `../../etc/passwd` becomes `etc.passwd` (or similar) instead of `.._.._etc_passwd`.",
+    "Re-run /app/backend/tests/test_security_fixes.py::TestSEC005CSV::test_csv_filename_sanitization to confirm."
+  ],
+  "critical_code_review_comments": [
+    "server.py checkout payload cap (line 430) uses json.dumps(payload.form) to measure size AFTER the body is fully deserialized — the 2MB cap is enforced post-parse, so a >2MB request still consumes memory. FastAPI/Starlette default has no request-size limit; consider a Starlette middleware or upstream (ingress) request-size limit for a true pre-parse cap. Current behavior still meets the SEC-004 acceptance criterion (returns 413).",
+    "server.py `_run_renewal_check` is called synchronously inside /api/dashboard/stats and /api/notifications — for setups with many admins this scales poorly; consider a background task.",
+    "server.py is 815 lines — approaching the 700-line split threshold; consider splitting into auth/users/setups/visits/reports modules.",
+    "server.py imports (line 561 `import re`) is placed mid-file; move to top-of-file import block for style consistency."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "92% (12/13)", "frontend": "N/A (backend-only run)"},
+  "seed_data_creation": "Test creates ephemeral employees (`sec_<tag>_<hex>@ugrow.com`), setups, and visits per test run. Not cleaned up — safe because emails are randomized. If cleanup is desired, add a teardown to delete by email prefix `sec_`.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Test file /app/backend/tests/test_security_fixes.py covers all SEC-001..SEC-005 + regression cases. To retest SEC-005 filename after fix: `pytest /app/backend/tests/test_security_fixes.py::TestSEC005CSV -v`. Old JWT secret used for forged-token test is `ugrow-dev-secret-change-me-in-prod`. Admin creds seeded via env: admin@ugrow.com / Admin@123.",
+  "rca_of_issue": "SEC-005 filename sanitization gap — the regex `[^A-Za-z0-9._-]+` in `_safe_filename` treats '.' as allowed on the character-class level and does not collapse repeated dots. Consequently `../../etc/passwd` (slashes replaced by `_`) leaves `.._.._etc_passwd`, still containing '..' fragments. Reproduction: `curl -s -o /dev/null -D - -H 'Authorization: Bearer <admin>' 'http://localhost:8001/api/reports/visits?format=csv&date_from=../../etc/passwd&date_to=x' | grep -i content-disposition` → `filename=\"visits_.._.._etc_passwd_to_x.csv\"`. Mitigation: add `name = re.sub(r'\\.{2,}', '.', name)` (and optionally `name = name.lstrip('.')`) inside `_safe_filename`."
+}
