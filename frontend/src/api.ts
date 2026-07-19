@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+const API_URL = "https://maintainance-ugrow-api.onrender.com";
 
 export async function setToken(v: string | null) {
   if (Platform.OS === 'web') {
