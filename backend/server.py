@@ -6,6 +6,7 @@ import io
 import logging
 import os
 import uuid
+import certifi
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -201,7 +202,10 @@ def _clean_visit(v: dict) -> dict:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global client, db
-    client = AsyncIOMotorClient(MONGO_URL)
+    client = AsyncIOMotorClient(
+    MONGO_URL,
+    tlsCAFile=certifi.where()
+)
     db = client[DB_NAME]
 
     # Idempotent admin seed
